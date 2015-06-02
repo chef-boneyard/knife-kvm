@@ -199,6 +199,12 @@ autopart --type=lvm
 
 %packages
 @core
+ntp
+%end
+
+%post
+systemctl enable ntpd
+systemctl start ntpd
 %end|).chomp
       end
 
