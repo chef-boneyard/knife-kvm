@@ -153,7 +153,7 @@ class Chef
           iso_image = config[:iso_image]
         end
 
-        command = "virt-install --name=#{@name_args[0]} --ram #{config[:memory]} --vcpus=1 --uuid=#{uuid} --location=/var/lib/libvirt/images/#{iso_image} #{extra_args} --os-type linux --disk path=/var/lib/libvirt/images/#{uuid}-0.img,format=raw,cache=none,bus=virtio,size=#{config[:disk_size]} --network=network:bridge01,model=virtio --hvm --accelerate --check-cpu --graphics vnc,listen=0.0.0.0 \ --memballoon model=virtio --initrd-inject=#{init_file}"
+        command = "virt-install --name=#{@name_args[0]} --ram #{config[:memory]} --vcpus=1 --uuid=#{uuid} --location=/var/lib/libvirt/images/#{iso_image} #{extra_args} --os-type linux --disk path=/var/lib/libvirt/images/#{uuid}-0.img,format=raw,cache=none,bus=virtio,size=#{config[:disk_size]} --disk /var/lib/libvirt/images/#{iso_image},device=cdrom --force  --network=network:bridge01,model=virtio --hvm --accelerate --check-cpu --graphics vnc,listen=0.0.0.0 \ --memballoon model=virtio --initrd-inject=#{init_file}"
 
         puts command.to_s
 
