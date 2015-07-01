@@ -1,3 +1,20 @@
+#
+# Copyright:: Copyright (c) 2015 Chef Software Inc.
+# License:: Apache License, Version 2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 require 'spec_helper'
 require 'chef/knife/kvm_vm_create.rb'
 
@@ -10,21 +27,6 @@ describe Chef::Knife::KvmVmCreate do
       c.merge_configs
     end
   end
-
-  # describe '#run' do
-  #   context 'by default' do
-  #     let(:argv) { %w[ create serverurl -n fakename --vios fakevios --virtual-server fakevirt --disk fakedisk -p fakeprof ] }
-  #
-  #     it 'parses argv, gets password, and creates lpar' do
-  #       expect(knife).to receive(:read_and_validate_params).and_call_original
-  #       expect(knife).to receive(:get_password)
-  #       expect(knife).to receive(:create_lpar)
-  #       knife.run
-  #     end
-  #   end
-  #
-  # end
-
 
   describe '#read_and_validate_params' do
     context 'when argv is empty' do
@@ -87,7 +89,5 @@ describe Chef::Knife::KvmVmCreate do
         expect { knife.run }.to raise_error(SystemExit)
       end
     end
-
-
   end
 end

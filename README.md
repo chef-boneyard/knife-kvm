@@ -2,11 +2,9 @@
 
 Beta Version - supports Create, Delete and List for VMs
 
-## Usage
-```
-knife kvm vm create <name> <arguments>
-```
-### Arguments
+## Subcommands
+
+### knife kvm vm create
 | Name               | Default   | Description                  |
 | ------------------ |:---------:| ----------------------------:|
 | -h, --hostname     | required  | KVM hostname or IP           |
@@ -22,10 +20,24 @@ knife kvm vm create <name> <arguments>
 | --dhcp             | false     | use dhcp?                    |
 | --disk-size        | 10 (GB)   | hard drive size in gigabytes |
 
-### Notes
+#### Notes
 - When using the `--dhcp` option, the `--guest-*` are not needed.
 - The `--iso-image` argument assumes your ISOs are located in `/var/lib/libvirt/images/`
 - The default root password for the created machine is `changeme` - the assumption is that you will be using Chef to manage your users.
+
+### knife kvm vm delete
+| Name               | Default   | Description                  |
+| ------------------ |:---------:| ----------------------------:|
+| -h, --hostname     | required  | KVM hostname or IP           |
+| -u, --username     | required  | KVM host username            |
+| -p, --password     | required  | KVM host password            |
+
+### knife kvm vm list
+| Name               | Default   | Description                  |
+| ------------------ |:---------:| ----------------------------:|
+| -h, --hostname     | required  | KVM hostname or IP           |
+| -u, --username     | required  | KVM host username            |
+| -p, --password     | required  | KVM host password            |
 
 ## Contributing
 

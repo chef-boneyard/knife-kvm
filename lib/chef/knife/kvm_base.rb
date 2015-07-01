@@ -15,7 +15,6 @@
 # limitations under the License.
 #
 
-# require 'oauth'
 require 'net/ssh'
 
 class Chef
