@@ -72,11 +72,11 @@ class Chef
       def delete_vm
         ui.info "Destroying machine"
         command = "virsh --connect qemu:///system destroy #{@name_args[0]}"
-        result = run_remote_command(command, config[:debug])
+        result = run_remote_command(command)
 
         ui.info "Nuking machine"
         command = "virsh --connect qemu:///system undefine #{@name_args[0]} --remove-all-storage"
-        result = run_remote_command(command, config[:debug])
+        result = run_remote_command(command)
       end
     end
   end
