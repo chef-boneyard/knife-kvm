@@ -55,6 +55,10 @@ class Chef
         :long => "--iso-image FILENAME",
         :description => "ISO Image (must be present on KVM host)"
 
+      option :main_network_adapter,
+        :long => "--main-network-adapter NAME",
+        :description => "KVM Host outgoing network adapter"
+
       option :guest_ip,
         :long => "--guest-ip IP",
         :description => "Static IP Address of guest"
@@ -70,12 +74,6 @@ class Chef
       option :guest_nameserver,
         :long => "--guest-nameserver IP",
         :description => "Nameserver for guest"
-
-      option :debug,
-        :long => "--debug",
-        :boolean => true,
-        :default => false,
-        :description => "Show debug output (default: false)"
 
       option :guest_dhcp,
         :long => "--dhcp",
@@ -110,7 +108,10 @@ class Chef
         if config[:hostname].nil? ||
             config[:username].nil? ||
             config[:flavor].nil? ||
-            config[:password].nil?
+            config[:password].nil? ||
+            config[:main_network_adapter].nil?
+            require 'pry'
+            binding.pry
           show_usage
           exit 1
         end
@@ -153,7 +154,7 @@ class Chef
           iso_image = config[:iso_image]
         end
 
-        command = "virt-install --name=#{@name_args[0]} --ram #{config[:memory]} --vcpus=1 --uuid=#{uuid} --location=/var/lib/libvirt/images/#{iso_image} #{extra_args} --os-type linux --disk path=/var/lib/libvirt/images/#{uuid}-0.img,format=raw,cache=none,bus=virtio,size=#{config[:disk_size]} --disk /var/lib/libvirt/images/#{iso_image},device=cdrom --force  --network=network:bridge01,model=virtio --hvm --accelerate --check-cpu --graphics vnc,listen=0.0.0.0 \ --memballoon model=virtio --initrd-inject=#{init_file}"
+        command = "virt-install --name=#{@name_args[0]} --ram #{config[:memory]} --vcpus=1 --uuid=#{uuid} --location=/var/lib/libvirt/images/#{iso_image} #{extra_args} --os-type linux --disk path=/var/lib/libvirt/images/#{uuid}-0.img,format=raw,cache=none,bus=virtio,size=#{config[:disk_size]} --disk /var/lib/libvirt/images/#{iso_image},device=cdrom --force  --network=direct,source=#{config[:main_network_adapter]}, --hvm --accelerate --check-cpu --graphics vnc,listen=0.0.0.0 \ --memballoon model=virtio --initrd-inject=#{init_file}"
 
         puts command.to_s
 
@@ -162,9 +163,9 @@ class Chef
         ui.info result
 
         ui.info "Running virsh console for unattended install"
-        ui.warn "THIS WILL TAKE A LONG TIME AND SHOW NO INFO UNLESS YOU USE --debug"
+        ui.warn "THIS WILL TAKE A LONG TIME AND SHOW NO INFO"
         command = "virsh --connect qemu:///system console #{@name_args[0]}"
-        result = run_remote_command(command, config[:debug])
+        result = run_remote_command(command)
 
         ui.info "Restarting system"
         command = "virsh --connect qemu:///system start #{@name_args[0]}"

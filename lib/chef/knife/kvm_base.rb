@@ -21,7 +21,7 @@ class Chef
   class Knife
     module KvmBase
 
-      def run_remote_command(command, console = false)
+      def run_remote_command(command)
         return_val = nil
         Net::SSH.start(config[:hostname], config[:username], :password => config[:password]) do |ssh|
           ssh.open_channel do | channel |
@@ -32,7 +32,6 @@ class Chef
             channel.exec command do |ch, success|
               if success
                 channel.on_data do |ch, data|
-                  print data if console
                   return_val = data.chomp
                 end
 
