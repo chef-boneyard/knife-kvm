@@ -18,11 +18,14 @@
 require 'shellwords'
 require 'chef/knife'
 require 'chef/knife/kvm_base'
+require 'chef/knife/bootstrap'
+require 'pry'
 
 class Chef
   class Knife
     class KvmVmCreate < Knife
       include Chef::Knife::KvmBase
+      Chef::Knife::Bootstrap.load_deps
 
       banner "knife kvm vm create NAME"
 
@@ -40,6 +43,11 @@ class Chef
         :short => "-p PASSWORD",
         :long => "--password",
         :description => "Login Password"
+
+      option :root_password,
+        :long => "--root-password PASSWORD",
+        :default => "changeme",
+        :description => "Guest root password"
 
       option :flavor,
         :short => "-f FLAVOR",
@@ -87,6 +95,24 @@ class Chef
         :default => 10,
         :description => "Disk Size in GB"
 
+      # Bootstrap options
+      option :template_file,
+        :long => "--template-file FILE",
+        :description => "Bootstrap template file"
+
+      option :environment,
+        :long => "--environment ENV",
+        :description => "Bootstrap environment"
+
+      option :bootstrap_version,
+        :long => "--bootstrap-version VERSION",
+        :description => "Bootstrap version",
+        :proc => Proc.new { |v| Chef::Config[:knife][:bootstrap_version] = v }
+
+      option :run_list,
+        :long => "--run-list ITEMS",
+        :description => "Bootstrap run list"
+
       #
       # Run the plugin
       #
@@ -110,8 +136,6 @@ class Chef
             config[:flavor].nil? ||
             config[:password].nil? ||
             config[:main_network_adapter].nil?
-            require 'pry'
-            binding.pry
           show_usage
           exit 1
         end
@@ -134,20 +158,22 @@ class Chef
         command = 'uuidgen'
         uuid = run_remote_command(command)
 
+        ssh_key = create_ssh_setup
+
         if config[:flavor] == 'el'
           extra_args = "--extra-args=\"ks=file:/kickstart.ks console=tty0 console=ttyS0,115200\""
           iso_image = "CentOS-7-x86_64-Minimal-1503-01.iso"
           init_file = "/tmp/kickstart.ks"
-          command = "echo #{kickstart_file_content} > /tmp/kickstart.ks"
+          command = "echo #{kickstart_file_content(ssh_key)} > /tmp/kickstart.ks"
           run_remote_command(command)
-          cleanup_command = "rm /tmp/kickstart.ks"
+          cleanup_preseed_command = "rm /tmp/kickstart.ks"
         elsif config[:flavor] == 'ubuntu'
           extra_args = "--extra-args=\"file=/preseed.cfg console=tty0 console=ttyS0,115200\""
           iso_image = "ubuntu-14.04.2-server-amd64.iso"
           init_file = "/tmp/preseed.cfg"
           command = "echo #{preseed_file_content} > /tmp/preseed.cfg"
           run_remote_command(command)
-          cleanup_command = "rm /tmp/preseed.cfg"
+          cleanup_preseed_command = "rm /tmp/preseed.cfg"
         end
 
         if config[:iso_image]
@@ -172,11 +198,124 @@ class Chef
         result = run_remote_command(command)
         ui.info result
 
+        # let's check on the IP address that we dropped grabbed
+        command = "cat /tmp/#{@name_args[0]}.network"
+        guest_ip = run_remote_command(command)
+
+        # bootstrap things now
+        bootstrap_node(guest_ip)
+
          # Clean up ks/preseed files
-        run_remote_command(cleanup_command, config)
+        run_remote_command(cleanup_preseed_command)
+
+        # Clean up ssh files
+        cleanup_ssh
       end
 
-      def kickstart_file_content
+      # We need to set up passwordless ssh so the guest can tell the host
+      # a little about itself - because networking...
+      def create_ssh_setup
+        command = "echo 'y\\\n' \| ssh-keygen -f /tmp/#{@name_args[0]}.key -N \"\" -P \"\""
+        result = run_remote_command(command)
+
+        if config[:username].eql? "root"
+          auth_keys_file = '/root/.ssh/authorized_keys'
+        else
+          auth_keys_file = "/home/#{config[:username]}/.ssh/authorized_keys"
+        end
+
+        # we don't want to overwrite anything that may already exist here
+        command = "echo \"\##{@name_args[0]}\" >> #{auth_keys_file}"
+        result = run_remote_command(command)
+
+        command = "cat /tmp/#{@name_args[0]}.key.pub >> #{auth_keys_file}"
+        result = run_remote_command(command)
+
+        command = "chmod 0600 #{auth_keys_file}"
+        result = run_remote_command(command)
+
+        command = "cat /tmp/#{@name_args[0]}.key"
+        ssh_key = run_remote_command(command)
+      end
+
+      def cleanup_ssh
+        if config[:username].eql? "root"
+          auth_keys_file = '/root/.ssh/authorized_keys'
+        else
+          auth_keys_file = "/home/#{config[:username]}/.ssh/authorized_keys"
+        end
+
+        command = "rm -f /tmp/#{@name_args[0]}.key"
+        run_remote_command(command)
+
+        command = "rm -f /tmp/#{@name_args[0]}.key.pub"
+        run_remote_command(command)
+
+        command = "grep -n '\##{@name_args[0]}' #{auth_keys_file} | cut -f1 -d ':'"
+        result = run_remote_command(command)
+
+        if !result.nil?
+          comment_line = result.to_i
+          key_line = comment_line + 1
+
+          command = "cp #{auth_keys_file} /tmp/temp_keys"
+          run_remote_command(command)
+
+          command = "awk '!((NR==#{comment_line})||(NR==#{key_line}))' < /tmp/temp_keys > #{auth_keys_file}"
+          run_remote_command(command)
+
+          command = "rm -f /tmp/temp_keys"
+          run_remote_command(command)
+        end
+
+        command = "rm -f /tmp/#{@name_args[0]}.network"
+        run_remote_command(command)
+      end
+
+      def bootstrap_node(guest_ip)
+        bootstrap = Chef::Knife::Bootstrap.new
+
+        bootstrap.name_args = [guest_ip]
+        bootstrap.config[:bootstrap_version] = config[:bootstrap_version]
+        bootstrap.config[:run_list] = config[:run_list]
+        bootstrap.config[:template_file] = config[:template_file]
+        bootstrap.config[:environment] = config[:environment]
+        bootstrap.config[:ssh_user] = "root"
+        bootstrap.config[:ssh_password] = config[:root_password]
+        bootstrap.config[:use_sudo] = false
+        bootstrap.config[:distro] = 'chef-full'
+        bootstrap.config[:ssh_port] = 22
+        bootstrap.config[:chef_node_name] = @name_args[0]
+        Chef::Config[:knife][:hints] ||= {}
+
+        wait_for_ssh(guest_ip)
+
+        begin
+          bootstrap.run
+        rescue Exception => e
+          puts e.to_s
+          exit
+        end
+      end
+
+      def wait_for_ssh(guest_ip)
+        begin
+          Timeout.timeout(1) do
+            begin
+              s = TCPSocket.new(guest_ip, 22)
+              s.close
+              return true
+            rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH, SocketError
+              return false
+            end
+          end
+        rescue Timeout::Error
+        end
+
+        return false
+      end
+
+      def kickstart_file_content(ssh_key)
         if config[:guest_dhcp]
           network_setup = "network --device=eth0 --activate --bootproto=dhcp --hostname=#{@name_args[0]} --onboot=yes"
         else
@@ -189,7 +328,7 @@ reboot
 lang en_US.UTF-8
 keyboard us
 #{network_setup}
-rootpw changeme
+rootpw #{config[:root_password]}
 firewall --disabled
 selinux --disabled
 timezone --utc America/Los_Angeles
@@ -206,6 +345,12 @@ ntp
 %post
 systemctl enable ntpd
 systemctl start ntpd
+echo '#{ssh_key}' > /tmp/#{@name_args[0]}.key
+chmod 0600 /tmp/#{@name_args[0]}.key
+ip addr \| grep eth0 \| grep inet \| perl -pe 's/.*inet (\\d+\\.\\d+\\.\\d+\\.\\d+).*/\\1/' > /tmp/#{@name_args[0]}.network
+scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/#{@name_args[0]}.key /tmp/#{@name_args[0]}.network root@#{config[:hostname]}:/tmp/#{@name_args[0]}.network
+rm -f /tmp/#{@name_args[0]}.key
+rm -f /tmp/#{@name_args[0]}.network
 %end|).chomp
       end
 
@@ -250,8 +395,8 @@ d-i partman/confirm_nooverwrite boolean true
 d-i partman/confirm_write_new_label boolean true
 d-i passwd/make-user boolean false
 d-i passwd/root-login boolean true
-d-i passwd/root-password password changeme
-d-i passwd/root-password-again password changeme
+d-i passwd/root-password password #{config[:root_password]}
+d-i passwd/root-password-again password #{config[:root_password]}
 d-i pkgsel/include string openssh-server
 d-i pkgsel/install-language-support boolean false
 d-i pkgsel/update-policy select none
