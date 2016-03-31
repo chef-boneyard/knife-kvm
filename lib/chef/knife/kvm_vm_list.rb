@@ -67,7 +67,7 @@ class Chef
       def list_vms
         Net::SSH.start(config[:hostname], config[:username], :password => config[:password]) do |ssh|
           command = 'virsh --connect=qemu:///system list --all'
-          result = run_remote_command(ssh, command)
+          result = run_remote_command(command)
           ui.info result
         end
       end
