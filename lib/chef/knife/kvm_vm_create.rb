@@ -19,7 +19,6 @@ require 'shellwords'
 require 'chef/knife'
 require 'chef/knife/kvm_base'
 require 'chef/knife/bootstrap'
-require 'pry'
 
 class Chef
   class Knife
