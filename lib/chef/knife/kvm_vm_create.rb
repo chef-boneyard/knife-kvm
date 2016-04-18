@@ -63,6 +63,10 @@ class Chef
         :long => "--iso-image FILENAME",
         :description => "ISO Image (must be present on KVM host)"
 
+      option :location,
+        :long => "--location URL",
+        :description => "URL to network install base"
+
       option :main_network_adapter,
         :long => "--main-network-adapter NAME",
         :description => "KVM Host outgoing network adapter"
@@ -140,6 +144,15 @@ class Chef
           exit 1
         end
 
+        if (config[:location].nil? &&
+          config[:iso_image].nil?) ||
+            (config[:location].nil? ^
+            config[:iso_image].nil?)
+          ui.fatal "You must specify either --location or --iso-image (not both)"
+          show_usage
+          exit 1
+        end
+
         if config[:guest_dhcp].eql? false
           if config[:guest_ip].nil? ||
             config[:guest_gateway].nil? ||
@@ -158,118 +171,47 @@ class Chef
         command = 'uuidgen'
         uuid = run_remote_command(command)
 
-        ssh_key = create_ssh_setup
+        # It's got to be one or the other, and we've already checked to make sure
+        # both are not null
+        install_source = if config[:location].nil?
+                           config[:iso_image]
+                         else
+                           config[:location]
+                         end
 
         if config[:flavor] == 'el'
           extra_args = "--extra-args=\"ks=file:/kickstart.ks console=tty0 console=ttyS0,115200\""
-          iso_image = "CentOS-7-x86_64-Minimal-1503-01.iso"
           init_file = "/tmp/kickstart.ks"
-          command = "echo #{kickstart_file_content(ssh_key)} > /tmp/kickstart.ks"
+          command = "echo #{kickstart_file_content} > /tmp/kickstart.ks"
           run_remote_command(command)
           cleanup_preseed_command = "rm /tmp/kickstart.ks"
         elsif config[:flavor] == 'ubuntu'
           extra_args = "--extra-args=\"file=/preseed.cfg console=tty0 console=ttyS0,115200\""
-          iso_image = "ubuntu-14.04.2-server-amd64.iso"
           init_file = "/tmp/preseed.cfg"
           command = "echo #{preseed_file_content} > /tmp/preseed.cfg"
           run_remote_command(command)
           cleanup_preseed_command = "rm /tmp/preseed.cfg"
         end
 
-        if config[:iso_image]
-          iso_image = config[:iso_image]
-        end
+        command = "virt-install --name=#{@name_args[0]} --ram #{config[:memory]} --vcpus=1 --uuid=#{uuid} --location=#{install_source} #{extra_args} --os-type linux --disk path=/dev/LVM1/#{uuid}.img,cache=none,bus=virtio,size=#{config[:disk_size]} --network=direct,source=#{config[:main_network_adapter]} --hvm --accelerate --check-cpu --graphics vnc,listen=0.0.0.0 \ --memballoon model=virtio --initrd-inject=#{init_file}"
 
-        command = "virt-install --name=#{@name_args[0]} --ram #{config[:memory]} --vcpus=1 --uuid=#{uuid} --location=/var/lib/libvirt/images/#{iso_image} #{extra_args} --os-type linux --disk path=/var/lib/libvirt/images/#{uuid}-0.img,format=raw,cache=none,bus=virtio,size=#{config[:disk_size]} --disk /var/lib/libvirt/images/#{iso_image},device=cdrom --force  --network=direct,source=#{config[:main_network_adapter]}, --hvm --accelerate --check-cpu --graphics vnc,listen=0.0.0.0 \ --memballoon model=virtio --initrd-inject=#{init_file}"
-
-        puts command.to_s
+        ui.debug command.to_s
 
         ui.info "Running the virt-install command now"
-        result = run_remote_command(command)
-        ui.info result
-
-        ui.info "Running virsh console for unattended install"
         ui.warn "THIS WILL TAKE A LONG TIME AND SHOW NO INFO"
-        command = "virsh --connect qemu:///system console #{@name_args[0]}"
-        result = run_remote_command(command)
+        result = run_remote_command(command, true)
+        ui.info result
 
         ui.info "Restarting system"
         command = "virsh --connect qemu:///system start #{@name_args[0]}"
-        result = run_remote_command(command)
+        result = run_remote_command(command, true)
         ui.info result
 
-        # let's check on the IP address that we dropped grabbed
-        command = "cat /tmp/#{@name_args[0]}.network"
-        guest_ip = run_remote_command(command)
-
         # bootstrap things now
-        bootstrap_node(guest_ip)
+        bootstrap_node(config[:guest_ip])
 
          # Clean up ks/preseed files
-        run_remote_command(cleanup_preseed_command)
-
-        # Clean up ssh files
-        cleanup_ssh
-      end
-
-      # We need to set up passwordless ssh so the guest can tell the host
-      # a little about itself - because networking...
-      def create_ssh_setup
-        command = "echo 'y\\\n' \| ssh-keygen -f /tmp/#{@name_args[0]}.key -N \"\" -P \"\""
-        result = run_remote_command(command)
-
-        if config[:username].eql? "root"
-          auth_keys_file = '/root/.ssh/authorized_keys'
-        else
-          auth_keys_file = "/home/#{config[:username]}/.ssh/authorized_keys"
-        end
-
-        # we don't want to overwrite anything that may already exist here
-        command = "echo \"\##{@name_args[0]}\" >> #{auth_keys_file}"
-        result = run_remote_command(command)
-
-        command = "cat /tmp/#{@name_args[0]}.key.pub >> #{auth_keys_file}"
-        result = run_remote_command(command)
-
-        command = "chmod 0600 #{auth_keys_file}"
-        result = run_remote_command(command)
-
-        command = "cat /tmp/#{@name_args[0]}.key"
-        ssh_key = run_remote_command(command)
-      end
-
-      def cleanup_ssh
-        if config[:username].eql? "root"
-          auth_keys_file = '/root/.ssh/authorized_keys'
-        else
-          auth_keys_file = "/home/#{config[:username]}/.ssh/authorized_keys"
-        end
-
-        command = "rm -f /tmp/#{@name_args[0]}.key"
-        run_remote_command(command)
-
-        command = "rm -f /tmp/#{@name_args[0]}.key.pub"
-        run_remote_command(command)
-
-        command = "grep -n '\##{@name_args[0]}' #{auth_keys_file} | cut -f1 -d ':'"
-        result = run_remote_command(command)
-
-        if !result.nil?
-          comment_line = result.to_i
-          key_line = comment_line + 1
-
-          command = "cp #{auth_keys_file} /tmp/temp_keys"
-          run_remote_command(command)
-
-          command = "awk '!((NR==#{comment_line})||(NR==#{key_line}))' < /tmp/temp_keys > #{auth_keys_file}"
-          run_remote_command(command)
-
-          command = "rm -f /tmp/temp_keys"
-          run_remote_command(command)
-        end
-
-        command = "rm -f /tmp/#{@name_args[0]}.network"
-        run_remote_command(command)
+        run_remote_command(cleanup_preseed_command, true)
       end
 
       def bootstrap_node(guest_ip)
@@ -289,6 +231,9 @@ class Chef
         Chef::Config[:knife][:hints] ||= {}
 
         wait_for_ssh(guest_ip)
+
+        ui.debug "Bootstrap Config:"
+        ui.debug bootstrap.to_s
 
         begin
           bootstrap.run
@@ -315,7 +260,7 @@ class Chef
         return false
       end
 
-      def kickstart_file_content(ssh_key)
+      def kickstart_file_content
         if config[:guest_dhcp]
           network_setup = "network --device=eth0 --activate --bootproto=dhcp --hostname=#{@name_args[0]} --onboot=yes"
         else
@@ -323,8 +268,8 @@ class Chef
         end
 
         Shellwords.escape(%Q|install
-text
-reboot
+cmdline
+poweroff
 lang en_US.UTF-8
 keyboard us
 #{network_setup}
@@ -345,12 +290,6 @@ ntp
 %post
 systemctl enable ntpd
 systemctl start ntpd
-echo '#{ssh_key}' > /tmp/#{@name_args[0]}.key
-chmod 0600 /tmp/#{@name_args[0]}.key
-ip addr \| grep eth0 \| grep inet \| perl -pe 's/.*inet (\\d+\\.\\d+\\.\\d+\\.\\d+).*/\\1/' > /tmp/#{@name_args[0]}.network
-scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/#{@name_args[0]}.key /tmp/#{@name_args[0]}.network root@#{config[:hostname]}:/tmp/#{@name_args[0]}.network
-rm -f /tmp/#{@name_args[0]}.key
-rm -f /tmp/#{@name_args[0]}.network
 %end|).chomp
       end
 
@@ -371,6 +310,7 @@ d-i netcfg/confirm_static boolean true"
 
         Shellwords.escape(%Q|choose-mirror-bin mirror/http/proxy string
 d-i debian-installer/locale string en_US
+d-i debian-installer/exit/poweroff boolean true
 d-i console-setup/ask_detect boolean false
 d-i keyboard-configuration/layoutcode string us
 d-i time/zone string UTC
@@ -378,8 +318,8 @@ d-i clock-setup/ntp boolean true
 d-i clock-setup/utc boolean true
 #{network_setup}
 d-i mirror/country string manual
-d-i mirror/http/hostname string us.archive.ubuntu.com
-d-i mirror/http/directory string /ubuntu
+d-i mirror/http/hostname string ports.ubuntu.com
+d-i mirror/http/directory string /ubuntu-ports
 d-i finish-install/reboot_in_progress note
 d-i grub-installer/only_debian boolean true
 d-i grub-installer/with_other_os boolean true
