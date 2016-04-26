@@ -143,9 +143,7 @@ class Chef
           exit 1
         end
 
-        if (config[:location].nil? &&
-          config[:iso_image].nil?) ||
-            (config[:location].nil? ^
+        if !(config[:location].nil? ^
             config[:iso_image].nil?)
           ui.fatal "You must specify either --location or --iso-image (not both)"
           show_usage
@@ -194,7 +192,7 @@ class Chef
 
         command = "virt-install --name=#{@name_args[0]} --ram #{config[:memory]} --vcpus=1 --uuid=#{uuid} --location=#{install_source} #{extra_args} --os-type linux --disk path=/dev/LVM1/#{uuid}.img,cache=none,bus=virtio,size=#{config[:disk_size]} --network=direct,source=#{config[:main_network_adapter]} --hvm --accelerate --check-cpu --graphics vnc,listen=0.0.0.0 \ --memballoon model=virtio --initrd-inject=#{init_file}"
 
-        ui.debug command.to_s
+        ui.info command.to_s
 
         ui.info "Running the virt-install command now"
         ui.warn "THIS WILL TAKE A LONG TIME AND SHOW NO INFO"
@@ -231,8 +229,8 @@ class Chef
 
         wait_for_ssh(guest_ip)
 
-        ui.debug "Bootstrap Config:"
-        ui.debug bootstrap.to_s
+        ui.warn "Bootstrap Config:"
+        ui.warn bootstrap.to_s
 
         begin
           bootstrap.run
