@@ -190,17 +190,12 @@ class Chef
           cleanup_preseed_command = "rm /tmp/preseed.cfg"
         end
 
-        command = "virt-install --name=#{@name_args[0]} --ram #{config[:memory]} --vcpus=1 --uuid=#{uuid} --location=#{install_source} #{extra_args} --os-type linux --disk path=/dev/LVM1/#{uuid}.img,cache=none,bus=virtio,size=#{config[:disk_size]} --network=direct,source=#{config[:main_network_adapter]} --hvm --accelerate --check-cpu --graphics vnc,listen=0.0.0.0 \ --memballoon model=virtio --initrd-inject=#{init_file}"
+        command = "virt-install --name=#{@name_args[0]} --ram #{config[:memory]} --vcpus=2 --uuid=#{uuid} --location=#{install_source} #{extra_args} --os-type linux --disk path=/dev/LVM1/#{uuid}.img,cache=none,bus=virtio,size=#{config[:disk_size]} --network=direct,source=#{config[:main_network_adapter]} --hvm --accelerate --check-cpu --graphics vnc,listen=0.0.0.0 \ --memballoon model=virtio --initrd-inject=#{init_file}"
 
         ui.info command.to_s
 
         ui.info "Running the virt-install command now"
         ui.warn "THIS WILL TAKE A LONG TIME AND SHOW NO INFO"
-        result = run_remote_command(command, true)
-        ui.info result
-
-        ui.info "Restarting system"
-        command = "virsh --connect qemu:///system start #{@name_args[0]}"
         result = run_remote_command(command, true)
         ui.info result
 
