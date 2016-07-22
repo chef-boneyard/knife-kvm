@@ -98,6 +98,12 @@ class Chef
         :default => 10,
         :description => "Disk Size in GB"
 
+      option :disk_base_path,
+        :short => "-b disk base path",
+        :long => "--disk-base-path",
+        :default => "/dev/LVM1",
+        :description => "Base path of the disk (default: /dev/LVM1)"
+
       # Bootstrap options
       option :template_file,
         :long => "--template-file FILE",
@@ -191,7 +197,7 @@ class Chef
           cleanup_preseed_command = "rm /tmp/preseed.cfg"
         end
 
-        command = "virt-install --name=#{@name_args[0]} --ram #{config[:memory]} --vcpus=2 --uuid=#{uuid} --location=#{install_source} #{extra_args} --os-type linux --disk path=/dev/LVM1/#{uuid}.img,cache=none,bus=virtio,size=#{config[:disk_size]} --network=direct,source=#{config[:main_network_adapter]} --hvm --accelerate --check-cpu --graphics vnc,listen=0.0.0.0 \ --memballoon model=virtio --initrd-inject=#{init_file}"
+        command = "virt-install --name=#{@name_args[0]} --ram #{config[:memory]} --vcpus=2 --uuid=#{uuid} --location=#{install_source} #{extra_args} --os-type linux --disk path=#{File.join(config[:disk_base_path],uuid)}.img,cache=none,bus=virtio,size=#{config[:disk_size]} --network=direct,source=#{config[:main_network_adapter]} --hvm --accelerate --check-cpu --graphics vnc,listen=0.0.0.0 \ --memballoon model=virtio --initrd-inject=#{init_file}"
 
         ui.info command.to_s
 

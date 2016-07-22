@@ -19,6 +19,8 @@ Beta Version - supports Create, Delete and List for VMs
 | --guest-nameserver | required  | guest nameserver             |
 | --dhcp             | false     | use dhcp?                    |
 | --disk-size        | 10 (GB)   | hard drive size in gigabytes |
+| --disk-path        | /dev/LVM1   | path of machine's disk |
+
 
 #### Notes
 - When using the `--dhcp` option, the `--guest-*` are not needed.
