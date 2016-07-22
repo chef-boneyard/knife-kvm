@@ -131,6 +131,7 @@ class Chef
       def read_and_validate_params
         if @name_args.length < 1
           show_usage
+          ui.fatal "You must specify name of the machine. Example: knife kvm vm create ..."
           exit 1
         end
 
