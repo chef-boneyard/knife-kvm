@@ -58,6 +58,11 @@ class Chef
         :default => 1024,
         :description => "Memory in MB"
 
+      option :vcpus,
+        :long => "--vcpus VCPUS",
+        :default => 2,
+        :description => "Number of virtual CPUs"
+
       option :iso_image,
         :long => "--iso-image FILENAME",
         :description => "ISO Image (must be present on KVM host)"
@@ -69,6 +74,11 @@ class Chef
       option :main_network_adapter,
         :long => "--main-network-adapter NAME",
         :description => "KVM Host outgoing network adapter"
+
+      option :network,
+        :long => "--network NAME",
+        :default => "direct",
+        :description => "network parameter for virt-install"
 
       option :guest_ip,
         :long => "--guest-ip IP",
@@ -104,6 +114,19 @@ class Chef
         :default => "/dev/LVM1",
         :description => "Base path of the disk (default: /dev/LVM1)"
 
+      #Custom kickstart path
+      option :custom_kickstart,
+        :short => "-k Custom kickstart path",
+        :long => "--custom-kickstart",
+        :default => false,
+        :description => "Custom kickstart path"
+
+      #Use it only with custom_kickstart. IP or FQDN of the node to bootstrap
+      option :bootstrap_node_ip,
+        :long => "--bootstrap-node-ip IP",
+        :default => false,
+        :description => "Node to bootstrap"
+
       # Bootstrap options
       option :template_file,
         :long => "--template-file FILE",
@@ -128,6 +151,11 @@ class Chef
       def run
         read_and_validate_params
         create_vm
+        if config[:bootstrap_node_ip]
+          bootstrap_node(config[:bootstrap_node_ip])
+        else
+          bootstrap_node(config[:guest_ip])
+        end
       end
 
       #
@@ -141,13 +169,15 @@ class Chef
           exit 1
         end
 
-        if config[:hostname].nil? ||
+        if not config[:custom_kickstart]
+          if config[:hostname].nil? ||
             config[:username].nil? ||
             config[:flavor].nil? ||
             config[:password].nil? ||
             config[:main_network_adapter].nil?
-          show_usage
-          exit 1
+              show_usage
+              exit 1
+          end
         end
 
         if !(config[:location].nil? ^
@@ -157,12 +187,20 @@ class Chef
           exit 1
         end
 
-        if config[:guest_dhcp].eql? false
+        if config[:guest_dhcp].eql? false and not config[:custom_kickstart]
           if config[:guest_ip].nil? ||
             config[:guest_gateway].nil? ||
             config[:guest_netmask].nil? ||
             config[:guest_nameserver].nil?
             ui.fatal "When using a static IP, you must specify the IP, Gateway, Netmask, and Nameserver"
+            exit 1
+          end
+        end
+
+        if config[:custom_kickstart]
+          if not config[:bootstrap_node_ip]
+            ui.fatal "When using a custom kickstart file, you must specify --bootstrap-node-ip"
+            show_usage
             exit 1
           end
         end
@@ -186,9 +224,16 @@ class Chef
         if config[:flavor] == 'el'
           extra_args = "--extra-args=\"ks=file:/kickstart.ks console=tty0 console=ttyS0,115200\""
           init_file = "/tmp/kickstart.ks"
-          command = "echo #{kickstart_file_content} > /tmp/kickstart.ks"
-          run_remote_command(command)
-          cleanup_preseed_command = "rm /tmp/kickstart.ks"
+          if config[:custom_kickstart]
+            ui.info "Using custom kickstart file #{config[:custom_kickstart]}"
+            command = "/bin/cp #{config[:custom_kickstart]} /tmp/kickstart.ks"
+            run_remote_command(command)
+            cleanup_preseed_command = "rm /tmp/kickstart.ks"
+          else
+            command = "echo #{kickstart_file_content} > /tmp/kickstart.ks"
+            run_remote_command(command)
+            cleanup_preseed_command = "rm /tmp/kickstart.ks"
+          end
         elsif config[:flavor] == 'ubuntu'
           extra_args = "--extra-args=\"file=/preseed.cfg console=tty0 console=ttyS0,115200\""
           init_file = "/tmp/preseed.cfg"
@@ -197,7 +242,7 @@ class Chef
           cleanup_preseed_command = "rm /tmp/preseed.cfg"
         end
 
-        command = "virt-install --name=#{@name_args[0]} --ram #{config[:memory]} --vcpus=2 --uuid=#{uuid} --location=#{install_source} #{extra_args} --os-type linux --disk path=#{File.join(config[:disk_base_path],uuid)}.img,cache=none,bus=virtio,size=#{config[:disk_size]} --network=direct,source=#{config[:main_network_adapter]} --hvm --accelerate --check-cpu --graphics vnc,listen=0.0.0.0 \ --memballoon model=virtio --initrd-inject=#{init_file}"
+        command = "virt-install --name=#{@name_args[0]} --ram #{config[:memory]} --vcpus=#{config[:vcpus]} --uuid=#{uuid} --location=#{install_source} #{extra_args} --os-type linux --disk path=#{File.join(config[:disk_base_path],uuid)}.img,cache=none,bus=virtio,size=#{config[:disk_size]} --network=#{config[:network]},source=#{config[:main_network_adapter]} --hvm --accelerate --check-cpu --graphics vnc,listen=0.0.0.0 \ --memballoon model=virtio --initrd-inject=#{init_file}"
 
         ui.info command.to_s
 
@@ -207,7 +252,11 @@ class Chef
         ui.info result
 
         # bootstrap things now
-        bootstrap_node(config[:guest_ip])
+        if config[:bootstrap_node_ip]
+          bootstrap_node(config[:bootstrap_node_ip])
+        else
+          bootstrap_node(config[:guest_ip])
+        end
 
          # Clean up ks/preseed files
         run_remote_command(cleanup_preseed_command, true)
