@@ -273,7 +273,11 @@ class Chef
         bootstrap.config[:chef_node_name] = @name_args[0]
         Chef::Config[:knife][:hints] ||= {}
 
-        wait_for_ssh(guest_ip)
+        ui.warn "Wait for ssh.."
+
+        while(!wait_for_ssh(guest_ip)) do
+
+        end
 
         ui.warn "Bootstrap Config:"
         ui.warn bootstrap.to_s
