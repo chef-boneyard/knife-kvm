@@ -151,11 +151,6 @@ class Chef
       def run
         read_and_validate_params
         create_vm
-        if config[:bootstrap_node_ip]
-          bootstrap_node(config[:bootstrap_node_ip])
-        else
-          bootstrap_node(config[:guest_ip])
-        end
       end
 
       #
