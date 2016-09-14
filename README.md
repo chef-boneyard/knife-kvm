@@ -18,10 +18,12 @@ Beta Version - supports Create, Delete and List for VMs
 | --guest-netmask         | required    | guest netmask                 |
 | --guest-nameserver      | required    | guest nameserver              |
 | --dhcp                  | false       | use dhcp?                     |
+| --network               | direct      | network name for virt-install |
 | --disk-size             | 10 (GB)     | hard drive size in gigabytes  |
 | --disk-base-path        | /dev/LVM1   | Base path of disk             |
 | --custom-kickstart      | false       | path of custom kickstart file |
-
+| --vcpus                 | 2           | number of virtual CPUs        |
+       
 #### Notes
 - When using the `--dhcp` option, the `--guest-*` are not needed.
 - The `--iso-image` argument assumes your ISOs are located in `/var/lib/libvirt/images/`
