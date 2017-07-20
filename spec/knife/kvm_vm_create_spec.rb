@@ -84,8 +84,7 @@ describe Chef::Knife::KvmVmCreate do
 
       it 'prints usage and exits' do
         expect(knife).to receive(:read_and_validate_params).and_call_original
-        expect(knife.ui).to receive(:fatal).
-          with("When using a static IP, you must specify the IP, Gateway, Netmask, and Nameserver")
+        expect(knife).to receive(:show_usage)
         expect { knife.run }.to raise_error(SystemExit)
       end
     end
