@@ -5,23 +5,25 @@ Beta Version - supports Create, Delete and List for VMs
 ## Subcommands
 
 ### knife kvm vm create
-| Name               | Default   | Description                  |
-| ------------------ |:---------:| ----------------------------:|
-| -h, --hostname     | required  | KVM hostname or IP           |
-| -u, --username     | required  | KVM host username            |
-| -p, --password     | required  | KVM host password            |
-| --flavor           | required  | OS Flavor (ubuntu or el)     |
-| --memory           | 1024 (MB) | memory in megabytes          |
-| --iso-image        | required  | installation ISO filename    |
-| --guest-ip         | required  | guest IP address             |
-| --guest-gateway    | required  | guest gateway                |
-| --guest-netmask    | required  | guest netmask                |
-| --guest-nameserver | required  | guest nameserver             |
-| --dhcp             | false     | use dhcp?                    |
-| --disk-size        | 10 (GB)   | hard drive size in gigabytes |
-| --disk-path        | /dev/LVM1   | path of machine's disk |
-
-
+| Name                    | Default     | Description                   |
+| ------------------------|:-----------:| -----------------------------:|
+| -h, --hostname          | required    | KVM hostname or IP            |
+| -u, --username          | required    | KVM host username             |
+| -p, --password          | required    | KVM host password             |
+| --flavor                | required    | OS Flavor (ubuntu or el)      |
+| --memory                | 1024 (MB)   | memory in megabytes           |
+| --iso-image             | required    | installation ISO filename     |
+| --guest-ip              | required    | guest IP address              |
+| --guest-gateway         | required    | guest gateway                 |
+| --guest-netmask         | required    | guest netmask                 |
+| --guest-nameserver      | required    | guest nameserver              |
+| --dhcp                  | false       | use dhcp?                     |
+| --network               | direct      | network name for virt-install |
+| --disk-size             | 10 (GB)     | hard drive size in gigabytes  |
+| --disk-base-path        | /dev/LVM1   | Base path of disk             |
+| --custom-kickstart      | false       | path of custom kickstart file |
+| --vcpus                 | 2           | number of virtual CPUs        |
+       
 #### Notes
 - When using the `--dhcp` option, the `--guest-*` are not needed.
 - The `--iso-image` argument assumes your ISOs are located in `/var/lib/libvirt/images/`
@@ -40,6 +42,12 @@ Beta Version - supports Create, Delete and List for VMs
 | -h, --hostname     | required  | KVM hostname or IP           |
 | -u, --username     | required  | KVM host username            |
 | -p, --password     | required  | KVM host password            |
+
+### Using a custom kickstart file
+
+Example:
+
+knife kvm vm create node1 -u root --password use_ssh_key -h 127.0.0.1 --flavor el --root-password 'foobar01' --location '/opt/ISO/CentOS-7-x86_64-Minimal-1511.iso' --main-network-adapter eth0 --disk-size 30 --memory 4096 --disk-base-path /opt/VM_DISKS --custom-kickstart /tmp/my_kickstart.ks --run-list role[foo] --bootstrap-node-ip 192.168.122.77
 
 ## Contributing
 
