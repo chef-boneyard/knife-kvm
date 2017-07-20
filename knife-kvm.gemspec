@@ -10,8 +10,8 @@ Gem::Specification.new do |spec|
   spec.email         = ["shain@chef.io"]
   spec.summary       = %q{A knife plugin to interact with kvm}
   spec.description   = %q{A knife plugin to interact with kvm}
-  spec.homepage      = "http://github.com/chef/knife-kvm"
-  spec.license       = "Apache2"
+  spec.homepage      = "https://github.com/chef/knife-kvm"
+  spec.license       = "Apache-2.0"
 
   spec.files         = `git ls-files -z`.split("\x0")
   spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
