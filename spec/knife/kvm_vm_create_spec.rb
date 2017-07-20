@@ -15,8 +15,8 @@
 # limitations under the License.
 #
 
-require 'spec_helper'
-require 'chef/knife/kvm_vm_create.rb'
+require "spec_helper"
+require "chef/knife/kvm_vm_create.rb"
 
 describe Chef::Knife::KvmVmCreate do
 
@@ -28,61 +28,61 @@ describe Chef::Knife::KvmVmCreate do
     end
   end
 
-  describe '#read_and_validate_params' do
-    context 'when argv is empty' do
+  describe "#read_and_validate_params" do
+    context "when argv is empty" do
       let(:argv) { [] }
 
-      it 'prints usage and exits' do
+      it "prints usage and exits" do
         expect(knife).to receive(:read_and_validate_params).and_call_original
         expect(knife).to receive(:show_usage)
         expect { knife.run }.to raise_error(SystemExit)
       end
     end
 
-    context 'when the host parameter is missing' do
-      let(:argv) { %w[ create vm_name -u username --password password --flavor flav] }
+    context "when the host parameter is missing" do
+      let(:argv) { %w{ create vm_name -u username --password password --flavor flav} }
 
-      it 'prints usage and exits' do
+      it "prints usage and exits" do
         expect(knife).to receive(:read_and_validate_params).and_call_original
         expect(knife).to receive(:show_usage)
         expect { knife.run }.to raise_error(SystemExit)
       end
     end
 
-    context 'when the username parameter is missing' do
-      let(:argv) { %w[ create vm_name -h hostname --password password --flavor flav ] }
+    context "when the username parameter is missing" do
+      let(:argv) { %w{ create vm_name -h hostname --password password --flavor flav } }
 
-      it 'prints usage and exits' do
+      it "prints usage and exits" do
         expect(knife).to receive(:read_and_validate_params).and_call_original
         expect(knife).to receive(:show_usage)
         expect { knife.run }.to raise_error(SystemExit)
       end
     end
 
-    context 'when the password parameter is missing' do
-      let(:argv) { %w[ create vm_name -h hostname -u username --flavor flav ] }
+    context "when the password parameter is missing" do
+      let(:argv) { %w{ create vm_name -h hostname -u username --flavor flav } }
 
-      it 'prints usage and exits' do
+      it "prints usage and exits" do
         expect(knife).to receive(:read_and_validate_params).and_call_original
         expect(knife).to receive(:show_usage)
         expect { knife.run }.to raise_error(SystemExit)
       end
     end
 
-    context 'when the flavor parameter is missing' do
-      let(:argv) { %w[ create vm_name -h hostname -u username --password password ] }
+    context "when the flavor parameter is missing" do
+      let(:argv) { %w{ create vm_name -h hostname -u username --password password } }
 
-      it 'prints usage and exits' do
+      it "prints usage and exits" do
         expect(knife).to receive(:read_and_validate_params).and_call_original
         expect(knife).to receive(:show_usage)
         expect { knife.run }.to raise_error(SystemExit)
       end
     end
 
-    context 'when using static ip, fail if required network info is not provided' do
-      let(:argv) { %w[ create vm_name -h hostname -u username --password password --flavor flav ] }
+    context "when using static ip, fail if required network info is not provided" do
+      let(:argv) { %w{ create vm_name -h hostname -u username --password password --flavor flav } }
 
-      it 'prints usage and exits' do
+      it "prints usage and exits" do
         expect(knife).to receive(:read_and_validate_params).and_call_original
         expect(knife.ui).to receive(:fatal).
           with("When using a static IP, you must specify the IP, Gateway, Netmask, and Nameserver")

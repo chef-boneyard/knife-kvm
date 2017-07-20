@@ -15,10 +15,10 @@
 # limitations under the License.
 #
 
-require 'shellwords'
-require 'chef/knife'
-require 'chef/knife/kvm_base'
-require 'chef/knife/bootstrap'
+require "shellwords"
+require "chef/knife"
+require "chef/knife/kvm_base"
+require "chef/knife/bootstrap"
 
 class Chef
   class Knife
@@ -166,12 +166,12 @@ class Chef
 
         if not config[:custom_kickstart]
           if config[:hostname].nil? ||
-            config[:username].nil? ||
-            config[:flavor].nil? ||
-            config[:password].nil? ||
-            config[:main_network_adapter].nil?
-              show_usage
-              exit 1
+              config[:username].nil? ||
+              config[:flavor].nil? ||
+              config[:password].nil? ||
+              config[:main_network_adapter].nil?
+            show_usage
+            exit 1
           end
         end
 
@@ -182,11 +182,11 @@ class Chef
           exit 1
         end
 
-        if config[:guest_dhcp].eql? false and not config[:custom_kickstart]
+        if config[:guest_dhcp].eql?(false) && (not config[:custom_kickstart])
           if config[:guest_ip].nil? ||
-            config[:guest_gateway].nil? ||
-            config[:guest_netmask].nil? ||
-            config[:guest_nameserver].nil?
+              config[:guest_gateway].nil? ||
+              config[:guest_netmask].nil? ||
+              config[:guest_nameserver].nil?
             ui.fatal "When using a static IP, you must specify the IP, Gateway, Netmask, and Nameserver"
             exit 1
           end
@@ -199,13 +199,12 @@ class Chef
             exit 1
           end
         end
-
       end
 
       private
 
       def create_vm
-        command = 'uuidgen'
+        command = "uuidgen"
         uuid = run_remote_command(command)
 
         # It's got to be one or the other, and we've already checked to make sure
@@ -216,7 +215,7 @@ class Chef
                            config[:location]
                          end
 
-        if config[:flavor] == 'el'
+        if config[:flavor] == "el"
           extra_args = "--extra-args=\"ks=file:/kickstart.ks console=tty0 console=ttyS0,115200\""
           init_file = "/tmp/kickstart.ks"
           if config[:custom_kickstart]
@@ -229,7 +228,7 @@ class Chef
             run_remote_command(command)
             cleanup_preseed_command = "rm /tmp/kickstart.ks"
           end
-        elsif config[:flavor] == 'ubuntu'
+        elsif config[:flavor] == "ubuntu"
           extra_args = "--extra-args=\"file=/preseed.cfg console=tty0 console=ttyS0,115200\""
           init_file = "/tmp/preseed.cfg"
           command = "echo #{preseed_file_content} > /tmp/preseed.cfg"
@@ -237,7 +236,7 @@ class Chef
           cleanup_preseed_command = "rm /tmp/preseed.cfg"
         end
 
-        command = "virt-install --name=#{@name_args[0]} --ram #{config[:memory]} --vcpus=#{config[:vcpus]} --uuid=#{uuid} --location=#{install_source} #{extra_args} --os-type linux --disk path=#{File.join(config[:disk_base_path],uuid)}.img,cache=none,bus=virtio,size=#{config[:disk_size]} --network=#{config[:network]},source=#{config[:main_network_adapter]} --hvm --accelerate --check-cpu --graphics vnc,listen=0.0.0.0 \ --memballoon model=virtio --initrd-inject=#{init_file}"
+        command = "virt-install --name=#{@name_args[0]} --ram #{config[:memory]} --vcpus=#{config[:vcpus]} --uuid=#{uuid} --location=#{install_source} #{extra_args} --os-type linux --disk path=#{File.join(config[:disk_base_path], uuid)}.img,cache=none,bus=virtio,size=#{config[:disk_size]} --network=#{config[:network]},source=#{config[:main_network_adapter]} --hvm --accelerate --check-cpu --graphics vnc,listen=0.0.0.0 \ --memballoon model=virtio --initrd-inject=#{init_file}"
 
         ui.info command.to_s
 
@@ -268,14 +267,14 @@ class Chef
         bootstrap.config[:ssh_user] = "root"
         bootstrap.config[:ssh_password] = config[:root_password]
         bootstrap.config[:use_sudo] = false
-        bootstrap.config[:distro] = 'chef-full'
+        bootstrap.config[:distro] = "chef-full"
         bootstrap.config[:ssh_port] = 22
         bootstrap.config[:chef_node_name] = @name_args[0]
         Chef::Config[:knife][:hints] ||= {}
 
         ui.warn "Wait for ssh.."
 
-        while(!wait_for_ssh(guest_ip)) do
+        until wait_for_ssh(guest_ip)
 
         end
 
@@ -304,7 +303,7 @@ class Chef
         rescue Timeout::Error
         end
 
-        return false
+        false
       end
 
       def kickstart_file_content
@@ -314,7 +313,7 @@ class Chef
           network_setup = "network --device=eth0 --activate --bootproto=static --ip=#{config[:guest_ip]} --netmask=#{config[:guest_netmask]} --gateway=#{config[:guest_gateway]} --nameserver=#{config[:guest_nameserver]} --hostname=#{@name_args[0]} --onboot=yes"
         end
 
-        Shellwords.escape(%Q|install
+        Shellwords.escape(%Q{install
 cmdline
 poweroff
 lang en_US.UTF-8
@@ -337,7 +336,7 @@ ntp
 %post
 systemctl enable ntpd
 systemctl start ntpd
-%end|).chomp
+%end}).chomp
       end
 
       def preseed_file_content
@@ -355,7 +354,7 @@ d-i netcfg/get_gateway string #{config[:guest_gateway]}
 d-i netcfg/confirm_static boolean true"
         end
 
-        Shellwords.escape(%Q|choose-mirror-bin mirror/http/proxy string
+        Shellwords.escape(%Q{choose-mirror-bin mirror/http/proxy string
 d-i debian-installer/locale string en_US
 d-i debian-installer/exit/poweroff boolean true
 d-i console-setup/ask_detect boolean false
@@ -391,7 +390,7 @@ d-i pkgsel/upgrade select none
 d-i user-setup/allow-password-weak boolean true
 d-i user-setup/encrypt-home boolean false
 tasksel tasksel/first multiselect ubuntu-server
-d-i preseed/late_command string chroot /target sh -c "sed -i s/without-password/yes/ /etc/ssh/sshd_config" ; chroot /target sh -c "service ssh restart"|).chomp
+d-i preseed/late_command string chroot /target sh -c "sed -i s/without-password/yes/ /etc/ssh/sshd_config" ; chroot /target sh -c "service ssh restart"}).chomp
       end
     end
   end

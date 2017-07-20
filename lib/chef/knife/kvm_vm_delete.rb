@@ -15,9 +15,9 @@
 # limitations under the License.
 #
 
-require 'shellwords'
-require 'chef/knife'
-require 'chef/knife/kvm_base'
+require "shellwords"
+require "chef/knife"
+require "chef/knife/kvm_base"
 
 class Chef
   class Knife
