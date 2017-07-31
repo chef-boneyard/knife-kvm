@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 
-require 'net/ssh'
+require "net/ssh"
 
 class Chef
   class Knife
@@ -24,7 +24,7 @@ class Chef
       def run_remote_command(command, console = false)
         return_val = nil
         Net::SSH.start(config[:hostname], config[:username], :password => config[:password]) do |ssh|
-          ssh.open_channel do | channel |
+          ssh.open_channel do |channel|
             channel.request_pty do |ch, success|
               raise "could not request pty" unless success
             end
