@@ -145,6 +145,11 @@ class Chef
         :long => "--run-list ITEMS",
         :description => "Bootstrap run list"
 
+      option :skip_bootstrap,
+        :long => "--skip-bootstrap",
+        :default => false,
+        :description => "Skip bootstrapping node"
+
       #
       # Run the plugin
       #
@@ -245,14 +250,16 @@ class Chef
         result = run_remote_command(command, true)
         ui.info result
 
-        # bootstrap things now
-        if config[:bootstrap_node_ip]
-          bootstrap_node(config[:bootstrap_node_ip])
-        else
-          bootstrap_node(config[:guest_ip])
+        unless config[:skip_bootstrap]
+          # bootstrap things now
+          if config[:bootstrap_node_ip]
+            bootstrap_node(config[:bootstrap_node_ip])
+          else
+            bootstrap_node(config[:guest_ip])
+          end
         end
 
-         # Clean up ks/preseed files
+        # Clean up ks/preseed files
         run_remote_command(cleanup_preseed_command, true)
       end
 
@@ -261,7 +268,7 @@ class Chef
 
         bootstrap.name_args = [guest_ip]
         bootstrap.config[:bootstrap_version] = config[:bootstrap_version]
-        bootstrap.config[:run_list] = config[:run_list]
+        bootstrap.config[:run_list] = config[:run_list].split(',')
         bootstrap.config[:template_file] = config[:template_file]
         bootstrap.config[:environment] = config[:environment]
         bootstrap.config[:ssh_user] = "root"
