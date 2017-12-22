@@ -261,7 +261,7 @@ class Chef
 
         bootstrap.name_args = [guest_ip]
         bootstrap.config[:bootstrap_version] = config[:bootstrap_version]
-        bootstrap.config[:run_list] = config[:run_list]
+        bootstrap.config[:run_list] = config[:run_list].split(',')
         bootstrap.config[:template_file] = config[:template_file]
         bootstrap.config[:environment] = config[:environment]
         bootstrap.config[:ssh_user] = "root"
