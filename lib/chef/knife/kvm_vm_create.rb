@@ -273,7 +273,7 @@ class Chef
         bootstrap.config[:use_sudo] = false
         bootstrap.config[:distro] = "chef-full"
         bootstrap.config[:ssh_port] = 22
-        bootstrap.config[:json_attributes] = config[:json_attributes]
+        bootstrap.config[:first_boot_attributes] = config[:json_attributes]
         bootstrap.config[:chef_node_name] = @name_args[0]
         Chef::Config[:knife][:hints] ||= {}
 
