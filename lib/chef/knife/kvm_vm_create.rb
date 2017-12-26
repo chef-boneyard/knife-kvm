@@ -132,6 +132,10 @@ class Chef
         :long => "--template-file FILE",
         :description => "Bootstrap template file"
 
+      option :json_attributes,
+        :long => "--json-attributes JSON_ATTRIBS",
+        :description => "A JSON string to be added to the first run of chef-client"
+
       option :environment,
         :long => "--environment ENV",
         :description => "Bootstrap environment"
@@ -269,6 +273,7 @@ class Chef
         bootstrap.config[:use_sudo] = false
         bootstrap.config[:distro] = "chef-full"
         bootstrap.config[:ssh_port] = 22
+        bootstrap.config[:json_attributes] = config[:json_attributes]
         bootstrap.config[:chef_node_name] = @name_args[0]
         Chef::Config[:knife][:hints] ||= {}
 
