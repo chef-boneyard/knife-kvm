@@ -145,6 +145,11 @@ class Chef
         :long => "--run-list ITEMS",
         :description => "Bootstrap run list"
 
+      option :skip_bootstrap,
+        :long => "--skip-bootstrap",
+        :default => false,
+        :description => "Skip bootstrapping node"
+
       #
       # Run the plugin
       #
@@ -245,14 +250,16 @@ class Chef
         result = run_remote_command(command, true)
         ui.info result
 
-        # bootstrap things now
-        if config[:bootstrap_node_ip]
-          bootstrap_node(config[:bootstrap_node_ip])
-        else
-          bootstrap_node(config[:guest_ip])
+        unless config[:skip_bootstrap]
+          # bootstrap things now
+          if config[:bootstrap_node_ip]
+            bootstrap_node(config[:bootstrap_node_ip])
+          else
+            bootstrap_node(config[:guest_ip])
+          end
         end
 
-         # Clean up ks/preseed files
+        # Clean up ks/preseed files
         run_remote_command(cleanup_preseed_command, true)
       end
 
